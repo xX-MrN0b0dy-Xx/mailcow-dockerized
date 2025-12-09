@@ -1,5 +1,6 @@
-services:
+# Almost all `./data/` mounts are updated from upstream, so don't touch them
 
+services:
     unbound-mailcow:
       image: ghcr.io/mailcow/unbound:1.24
       container_name: mailcow_unbound
@@ -8,7 +9,7 @@ services:
         - SKIP_UNBOUND_HEALTHCHECK=${SKIP_UNBOUND_HEALTHCHECK:-n}
       volumes:
         - ./data/hooks/unbound:/hooks:Z
-        - ./data/conf/unbound/unbound.conf:/etc/unbound/unbound.conf:ro,Z #updated from upstream, don't touch
+        - ./data/conf/unbound/unbound.conf:/etc/unbound/unbound.conf:ro,Z
       restart: always
       tty: true
       networks:
@@ -25,9 +26,9 @@ services:
         - netfilter-mailcow
       stop_grace_period: 45s
       volumes:
-        - mysql-vol-1:/var/lib/mysql/ #originally mysql-vol-1
+        - /var/lib/mailcow-dockerized/db/mysql:/var/lib/mysql #originally mysql-vol-1
         - mysql-socket-vol-1:/var/run/mysqld/:z
-        - ./data/conf/mysql/:/etc/mysql/conf.d/:ro,Z #updated from upstream, don't touch
+        - ./data/conf/mysql/:/etc/mysql/conf.d/:ro,Z
       environment:
         - TZ=${TZ}
         - MYSQL_ROOT_PASSWORD=${DBROOT}
@@ -48,7 +49,7 @@ services:
       container_name: mailcow_redis
       entrypoint: ["/bin/sh","/redis-conf.sh"]
       volumes:
-        - redis-vol-1:/data/ #originally redis-vol-1
+        - /var/lib/mailcow-dockerized/cache:/data #originally redis-vol-1
         - ./data/conf/redis/redis-conf.sh:/redis-conf.sh:z
       restart: always
       depends_on:
@@ -81,7 +82,7 @@ services:
         - SKIP_CLAMD=${SKIP_CLAMD:-n}
       volumes:
         - ./data/conf/clamav/:/etc/clamav/:Z
-        - clamd-db-vol-1:/var/lib/clamav #originally clamd-db-vol-1
+        - /var/lib/mailcow-dockerized/db/clamav:/var/lib/clamav #originally clamd-db-vol-1
       networks:
         mailcow-network:
           aliases:
@@ -111,7 +112,7 @@ services:
         - ./data/conf/rspamd/lua/:/etc/rspamd/lua/:ro,Z
         - ./data/conf/rspamd/rspamd.conf.local:/etc/rspamd/rspamd.conf.local:Z
         - ./data/conf/rspamd/rspamd.conf.override:/etc/rspamd/rspamd.conf.override:Z
-        - rspamd-vol-1:/var/lib/rspamd  #originally rspamd-vol-1
+        - /var/lib/mailcow-dockerized/rspamd:/var/lib/rspamd  #originally rspamd-vol-1
       restart: always
       hostname: rspamd
       dns:
@@ -139,7 +140,7 @@ services:
         - ./data/web/inc/functions.mailbox.inc.php:/mailcowauth/functions.mailbox.inc.php:z
         - ./data/web/inc/functions.ratelimit.inc.php:/mailcowauth/functions.ratelimit.inc.php:z
         - ./data/web/inc/functions.acl.inc.php:/mailcowauth/functions.acl.inc.php:z
-        - rspamd-vol-1:/var/lib/rspamd  #originally rspamd-vol-1
+        - /var/lib/mailcow-dockerized/rspamd:/var/lib/rspamd  #originally rspamd-vol-1
         - mysql-socket-vol-1:/var/run/mysqld/:z
         - ./data/conf/sogo/:/etc/sogo/:z
         - ./data/conf/rspamd/meta_exporter:/meta_exporter:ro,z
@@ -240,7 +241,7 @@ services:
         - ./data/conf/sogo/custom-sogo.js:/usr/lib/GNUstep/SOGo/WebServerResources/js/custom-sogo.js:z
         - mysql-socket-vol-1:/var/run/mysqld/:z
         - sogo-web-vol-1:/sogo_web
-        - sogo-userdata-backup-vol-1:/sogo_backup #originally sogo-userdata-backup-vol-1
+        - var/lib/mailcow-dockerized/sogo-temp-data:/sogo_backup #originally sogo-userdata-backup-vol-1
       labels:
         ofelia.enabled: "true"
         ofelia.job-exec.sogo_sessions.schedule: "@every 1m"
@@ -275,12 +276,12 @@ services:
         - ./data/assets/ssl:/etc/ssl/mail/:ro,z
         - ./data/conf/sogo/:/etc/sogo/:z
         - ./data/conf/phpfpm/sogo-sso/:/etc/phpfpm/:z
-        - vmail-vol-1:/var/vmail #originally vmail-vol-1
-        - vmail-index-vol-1:/var/vmail_index #originally vmail-index-vol-1
-        - crypt-vol-1:/mail_crypt/ #originally crypt-vol-1
+        - /var/lib/mailcow-dockerized/dovecot/mail:/var/vmail #originally vmail-vol-1
+        - /var/lib/mailcow-dockerized/dovecot/index:/var/vmail_index #originally vmail-index-vol-1
+        - /var/lib/mailcow-dockerized/encryption-keys:/mail_crypt #originally crypt-vol-1
         - ./data/conf/rspamd/custom/:/etc/rspamd/custom:z
         - ./data/assets/templates:/templates:z
-        - rspamd-vol-1:/var/lib/rspamd #originally rspamd-vol-1
+        - /var/lib/mailcow-dockerized/rspamd:/var/lib/rspamd #originally rspamd-vol-1
         - mysql-socket-vol-1:/var/run/mysqld/:z
       environment:
         - DOVECOT_MASTER_USER=${DOVECOT_MASTER_USER:-}
@@ -360,9 +361,9 @@ services:
         - ./data/hooks/postfix:/hooks:Z
         - ./data/conf/postfix:/opt/postfix/conf:z
         - ./data/assets/ssl:/etc/ssl/mail/:ro,z
-        - postfix-vol-1:/var/spool/postfix #originally postfix-vol-1
-        - crypt-vol-1:/var/lib/zeyple #originally crypt-vol-1
-        - rspamd-vol-1:/var/lib/rspamd #originally rspamd-vol-1
+        - /var/lib/mailcow-dockerized/postfix:/var/spool/postfix #originally postfix-vol-1
+        - /var/lib/mailcow-dockerized/encryption-keys:/var/lib/zeyple #originally crypt-vol-1
+        - /var/lib/mailcow-dockerized/rspamd:/var/lib/rspamd #originally rspamd-vol-1
         - mysql-socket-vol-1:/var/run/mysqld/:z
       environment:
         - LOG_LINES=${LOG_LINES:-9999}
@@ -397,7 +398,7 @@ services:
         unbound-mailcow:
           condition: service_healthy
       volumes:
-        - postfix-tlspol-vol-1:/var/lib/postfix-tlspol #originally postfix-tlspol-vol-1
+        - /var/lib/mailcow-dockerized/postfix-tlspol:/var/lib/postfix-tlspol #originally postfix-tlspol-vol-1
       environment:
         - LOG_LINES=${LOG_LINES:-9999}
         - TZ=${TZ}
@@ -542,9 +543,9 @@ services:
       tmpfs:
         - /tmp
       volumes:
-        - rspamd-vol-1:/var/lib/rspamd #originally rspamd-vol-1
+        - /var/lib/mailcow-dockerized/rspamd:/var/lib/rspamd #originally rspamd-vol-1
         - mysql-socket-vol-1:/var/run/mysqld/:z
-        - postfix-vol-1:/var/spool/postfix #originally postfix-vol-1
+        - /var/lib/mailcow-dockerized/postfix:/var/spool/postfix #originally postfix-vol-1
         - ./data/assets/ssl:/etc/ssl/mail/:ro,z
       restart: always
       depends_on:
@@ -687,15 +688,3 @@ networks:
 volumes:
   sogo-web-vol-1: #don't touch. Just CSS/JS files for the web interface.
   mysql-socket-vol-1: #don't touch. Unix socket for inter-process communication. It is not data.
-
-
-  vmail-vol-1:
-  vmail-index-vol-1:
-  mysql-vol-1:
-  redis-vol-1:
-  rspamd-vol-1:
-  postfix-vol-1:
-  postfix-tlspol-vol-1:
-  crypt-vol-1:
-  sogo-userdata-backup-vol-1:
-  clamd-db-vol-1:
